@@ -105,19 +105,24 @@ if uploaded_files:
 
         contador += 1
 
-    df = pd.DataFrame(filas)
+       df = pd.DataFrame(filas)
 
-        st.subheader("Revisa/Completa datos antes de descargar")
+    st.subheader("Revisa/Completa datos antes de descargar")
     df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
 
+    # Bloqueo: no dejar descargar si faltan campos obligatorios para ContaSimple
+    faltan = df[
+        (df["NIF"].astype(str).str.strip() == "")
+        | (df["NOMBRE O RAZÓN SOCIAL"].astype(str).str.strip() == "")
+        | (df["PAÍS"].astype(str).str.strip() == "")
+    ]
+    if len(faltan) > 0:
+        st.error("Faltan datos obligatorios del proveedor (NIF/CIF, Nombre o razón social o País). Rellénalos en la tabla para poder descargar.")
+        st.stop()
 
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Gastos")
-    faltan = df[(df["NIF"].astype(str).str.strip() == "") | (df["NOMBRE O RAZÓN SOCIAL"].astype(str).str.strip() == "") | (df["PAÍS"].astype(str).str.strip() == "")]
-    if len(faltan) > 0:
-        st.error("Faltan datos obligatorios del proveedor (NIF/CIF, Nombre o razón social o País). Rellénalos en la tabla para poder descargar.")
-        st.stop()
 
     st.download_button(
         "Descargar Excel de Gastos",
@@ -125,5 +130,3 @@ if uploaded_files:
         file_name="Gastos_ContaSimple.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-
