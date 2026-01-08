@@ -1,5 +1,5 @@
 import streamlit as st
-import pdfplumber
+from pypdf import PdfReader
 import pandas as pd
 import io
 import re
@@ -18,10 +18,30 @@ uploaded_files = st.file_uploader(
 )
 
 def extraer_datos(pdf_bytes):
-    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-        texto = ""
-        for page in pdf.pages:
-            texto += page.extract_text() or ""
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    texto = ""
+    for page in reader.pages:
+        texto += (page.extract_text() or "") + "\n"
+
+    fecha = None
+    proveedor = None
+    importe = None
+
+    m_fecha = re.search(r"\d{2}\.\d{2}\.\d{2}", texto)
+    if m_fecha:
+        fecha = datetime.strptime(m_fecha.group(), "%d.%m.%y").strftime("%d/%m/%Y")
+
+    lineas = texto.split("\n")
+    for l in lineas:
+        if "INICIATIVAS FINANCIERAS" in l and fecha:
+            proveedor = l.replace(fecha, "").replace("INICIATIVAS FINANCIERAS HIPOTECARIAS SL", "").strip()
+
+    m_importe = re.findall(r"\d+,\d{2}", texto)
+    if m_importe:
+        importe = m_importe[-1]
+
+    return fecha, proveedor, importe
+
 
     fecha = None
     proveedor = None
@@ -78,3 +98,4 @@ if uploaded_files:
         file_name="Gastos_ContaSimple.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
